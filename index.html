@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>每日祝福刮刮卡</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: linear-gradient(160deg, #2b3a4a 0%, #1a242f 100%);
+      color: #f8f9fa;
+      font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      touch-action: none;
+    }
+    h1 {
+      font-size: 22px;
+      letter-spacing: 2px;
+      margin-bottom: 6px;
+      color: #f4d58d;
+    }
+    .subtitle {
+      font-size: 13px;
+      color: #cbd5e1;
+      margin-bottom: 18px;
+    }
+
+    /* 刮刮卡外框 */
+    .card-wrapper {
+      position: relative;
+      width: 350px;
+      max-width: 92vw;
+      height: 265px;
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45);
+      border: 2px solid rgba(244, 213, 141, 0.5);
+    }
+
+    /* 底層：經文、鼓勵話語與呼應圖騰 */
+    .card-content {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top right, #fffdf9 0%, #fbf6ea 100%);
+      color: #2c3e50;
+      padding: 20px 22px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      user-select: none;
+    }
+
+    /* 卡片背景主題圖騰（淡雅浮水印） */
+    .card-motif {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      opacity: 0.14;
+      color: #c2882b;
+      z-index: 0;
+    }
+    .card-motif svg {
+      width: 195px;
+      height: 195px;
+    }
+
+    /* 角落細線框裝飾 */
+    .card-content::before {
+      content: "";
+      position: absolute;
+      inset: 9px;
+      border: 1px solid rgba(194, 136, 43, 0.25);
+      border-radius: 11px;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .verse-ref, .verse-text, .encouragement {
+      position: relative;
+      z-index: 2;
+    }
+
+    .verse-ref {
+      font-size: 13px;
+      font-weight: bold;
+      color: #9a5314;
+      background: rgba(254, 243, 199, 0.9);
+      border: 1px solid rgba(217, 155, 38, 0.3);
+      padding: 3px 12px;
+      border-radius: 999px;
+      margin-bottom: 10px;
+    }
+    .verse-text {
+      font-size: 15.5px;
+      line-height: 1.58;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 12px;
+    }
+    .encouragement {
+      font-size: 13.5px;
+      line-height: 1.52;
+      color: #475569;
+      border-top: 1px dashed rgba(148, 163, 184, 0.6);
+      padding-top: 10px;
+      width: 100%;
+    }
+
+    /* 上層：刮刮樂金箔塗層 */
+    canvas#scratchCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+      z-index: 5;
+    }
+    canvas#scratchCanvas:active {
+      cursor: grabbing;
+    }
+
+    .controls {
+      margin-top: 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .progress-text {
+      font-size: 13px;
+      color: #e2e8f0;
+      min-height: 18px;
+    }
+    .btn-group {
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 18px;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.12s ease, opacity 0.2s ease;
+    }
+    button:active { transform: scale(0.96); }
+    #nextBtn {
+      background-color: #f4d58d;
+      color: #1e293b;
+    }
+    #revealBtn {
+      background-color: rgba(255, 255, 255, 0.14);
+      color: #f8f9fa;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+    }
+  </style>
+</head>
+<body>
+
+  <h1>✦ 每日祝福刮刮卡 ✦</h1>
+  <div class="subtitle">用手指或滑鼠輕輕刮開塗層，領受今天的提醒</div>
+
+  <div class="card-wrapper">
+    <!-- 底層內容 -->
+    <div class="card-content">
+      <div class="card-motif" id="cardMotif"></div>
+      <div class="verse-ref" id="verseRef">載入中...</div>
+      <div class="verse-text" id="verseText"></div>
+      <div class="encouragement" id="encouragement"></div>
+    </div>
+
+    <!-- 刮除塗層 -->
+    <canvas id="scratchCanvas"></canvas>
+  </div>
+
+  <div class="controls">
+    <div class="progress-text" id="progressText">已刮開：0%</div>
+    <div class="btn-group">
+      <button id="revealBtn">一鍵全開</button>
+      <button id="nextBtn">再抽一張</button>
+    </div>
+  </div>
+
+  <script>
+    // 簡易 SVG 圖騰庫（線條簡約、不搶文字焦點）
+    const motifs = {
+      // 溪水與青草波紋
+      waves: `<svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <path d="M15 45 Q37 32 60 45 T105 45"/>
+        <path d="M15 62 Q37 49 60 62 T105 62"/>
+        <path d="M15 79 Q37 66 60 79 T105 79"/>
+        <circle cx="60" cy="24" r="6"/>
+      </svg>`,
+      // 太陽與光芒
+      sun: `<svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <circle cx="60" cy="60" r="22"/>
+        <line x1="60" y1="14" x2="60" y2="28"/><line x1="60" y1="92" x2="60" y2="106"/>
+        <line x1="14" y1="60" x2="28" y2="60"/><line x1="92" y1="60" x2="106" y2="60"/>
+        <line x1="27" y1="27" x2="37" y2="37"/><line x1="83" y1="83" x2="93" y2="93"/>
+        <line x1="93" y1="27" x2="83" y2="37"/><line x1="37" y1="83" x2="27" y2="93"/>
+      </svg>`,
+      // 橄欖枝葉（平安）
+      leaf: `<svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <path d="M25 95 Q55 65 95 25"/>
+        <path d="M45 75 C32 68 32 54 48 56 C54 68 50 74 45 75 Z"/>
+        <path d="M62 58 C49 51 49 37 65 39 C71 51 67 57 62 58 Z"/>
+        <path d="M58 62 C65 75 79 75 77 59 C65 53 59 57 58 62 Z"/>
+        <path d="M75 45 C82 58 96 58 94 42 C82 36 76 40 75 45 Z"/>
+      </svg>`,
+      // 十字星芒（安息與恩典）
+      star: `<svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linejoin="round">
+        <path d="M60 14 L69 51 L106 60 L69 69 L60 106 L51 69 L14 60 L51 51 Z"/>
+        <circle cx="60" cy="60" r="10"/>
+      </svg>`,
+      // 羅盤指引（方向與道路）
+      compass: `<svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="2.3">
+        <circle cx="60" cy="60" r="42"/>
+        <circle cx="60" cy="60" r="34" stroke-dasharray="4 4"/>
+        <polygon points="60,26 68,60 60,94 52,60"/>
+        <circle cx="60" cy="60" r="4" fill="currentColor"/>
+      </svg>`,
+      // 盾牌（剛強與保護）
+      shield: `<svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round">
+        <path d="M60 18 L94 32 V58 C94 81 78 96 60 104 C42 96 26 81 26 58 V32 Z"/>
+        <line x1="60" y1="34" x2="60" y2="86"/>
+        <line x1="42" y1="54" x2="78" y2="54"/>
+      </svg>`,
+      // 船錨（盼望與穩固）
+      anchor: `<svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <circle cx="60" cy="28" r="8"/>
+        <line x1="60" y1="36" x2="60" y2="94"/>
+        <line x1="42" y1="48" x2="78" y2="48"/>
+        <path d="M30 72 C30 92 90 92 90 72"/>
+        <polyline points="24,78 30,70 38,76"/>
+        <polyline points="96,78 90,70 82,76"/>
+      </svg>`,
+      // 綻放花朵（喜樂與恩慈）
+      flower: `<svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="2.3">
+        <circle cx="60" cy="60" r="11"/>
+        <circle cx="60" cy="34" r="14"/><circle cx="60" cy="86" r="14"/>
+        <circle cx="34" cy="60" r="14"/><circle cx="86" cy="60" r="14"/>
+        <circle cx="42" cy="42" r="12"/><circle cx="78" cy="78" r="12"/>
+        <circle cx="78" cy="42" r="12"/><circle cx="42" cy="78" r="12"/>
+      </svg>`,
+      // 飛翔小鳥（自由與重新得力）
+      bird: `<svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <path d="M22 65 C36 42 54 46 60 62 C66 46 84 42 98 65"/>
+        <path d="M35 80 C45 64 56 67 60 77 C64 67 75 64 85 80"/>
+      </svg>`,
+      // 樹與果實（扎根與成長）
+      tree: `<svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+        <line x1="60" y1="98" x2="60" y2="52"/>
+        <path d="M60 72 L44 58"/><path d="M60 64 L76 50"/>
+        <circle cx="60" cy="42" r="24"/>
+        <path d="M40 98 H80"/>
+      </svg>`
+    };
+
+    // 16 段聖經經文與鼓勵話語資料庫
+    const cards = [
+      // 原有 8 段
+      {
+        ref: "詩篇 23:1",
+        verse: "「耶和華是我的牧者，我必不致缺乏。」",
+        note: "今天不需要把所有重擔都扛在自己肩上，慢慢走，所需要的恩典會在剛好的時候出現。",
+        motif: "waves"
+      },
+      {
+        ref: "以賽亞書 41:10",
+        verse: "「你不要害怕，因為我與你同在；不要驚惶，因為我是你的神。」",
+        note: "面對未知或忙碌的節奏時，先深呼吸一下，你並不是孤軍奮戰。",
+        motif: "shield"
+      },
+      {
+        ref: "腓立比書 4:6-7",
+        verse: "「應當一無掛慮，只要凡事藉著禱告、祈求，和感謝，將你們所要的告訴神。」",
+        note: "把心裡的煩惱說出來、交託出去，願今天有一份出人意料的平安守住你的心。",
+        motif: "leaf"
+      },
+      {
+        ref: "馬太福音 11:28",
+        verse: "「凡勞苦擔重擔的人可以到我這裡來，我就使你們得安息。」",
+        note: "累了就允許自己歇一會兒，好好吃頓飯、睡個覺，休息不是偷懶，而是重新得力。",
+        motif: "star"
+      },
+      {
+        ref: "箴言 3:5-6",
+        verse: "「你要專心仰賴耶和華，不可倚靠自己的聰明，在你一切所行的事上都要認定他，他必指引你的路。」",
+        note: "就算眼前還看不清全貌，只要踏穩眼前的每一步，方向就會慢慢明朗。",
+        motif: "compass"
+      },
+      {
+        ref: "約書亞記 1:9",
+        verse: "「你當剛強壯膽！不要懼怕，也不要驚惶；因為你無論往哪裡去，耶和華你的神必與你同在。」",
+        note: "你的溫柔與堅持都很有力量，今天也勇敢做一個真實、善良的自己。",
+        motif: "shield"
+      },
+      {
+        ref: "詩篇 46:1",
+        verse: "「神是我們的避難所，是我們的力量，是我們在患難中隨時的幫助。」",
+        note: "不管今天遇到什麼小插曲，心裡總有一個安穩的角落可以退回來喘口氣。",
+        motif: "anchor"
+      },
+      {
+        ref: "羅馬書 15:13",
+        verse: "「但願使人有盼望的神，因信將諸般的喜樂、平安充滿你們的心。」",
+        note: "願今天的你不只忙著完成待辦事項，也能捕捉到一點小小的喜樂與溫暖。",
+        motif: "flower"
+      },
+
+      // 新增 8 段經文
+      {
+        ref: "以賽亞書 40:31",
+        verse: "「但那等候耶和華的必從新得力。他們必如鷹展翅上騰；他們奔跑卻不困倦，行走卻不疲乏。」",
+        note: "暫時的等待不是停滯，而是在為下一次展翅積蓄力量，你的努力都有意義。",
+        motif: "bird"
+      },
+      {
+        ref: "詩篇 119:105",
+        verse: "「你的話是我腳前的燈，是我路上的光。」",
+        note: "光亮雖然一次只照亮腳前的一小步，但已經足夠陪你安穩走過眼前的夜路。",
+        motif: "sun"
+      },
+      {
+        ref: "耶利米書 29:11",
+        verse: "「我知道我向你們所懷的意念是賜平安的意念，不是降災禍的意念，要叫你們末後有指望。」",
+        note: "就算現在的計畫跟預期不太一樣，前方依然為你預留了充滿希望的風景。",
+        motif: "star"
+      },
+      {
+        ref: "詩篇 1:3",
+        verse: "「他要像一棵樹栽在溪水旁，按時候結果子，葉子也不枯乾。凡他所做的盡都順利。」",
+        note: "把根扎深、按著自己的節奏成長，屬於你的花期與果實會在對的季節來到。",
+        motif: "tree"
+      },
+      {
+        ref: "哥林多前書 13:4, 7",
+        verse: "「愛是恆久忍耐，又有恩慈……凡事包容，凡事相信，凡事盼望，凡事忍耐。」",
+        note: "在對別人溫柔的同時，也別忘了把這份耐心與恩慈留一份給正在努力的自己。",
+        motif: "flower"
+      },
+      {
+        ref: "希伯來書 6:19",
+        verse: "「我們有這指望，如同靈魂的錨，又堅固又牢靠。」",
+        note: "外在的風浪也許偶爾起伏，但你心裡有穩固的錨，不會輕易被吹散方向。",
+        motif: "anchor"
+      },
+      {
+        ref: "約翰福音 14:27",
+        verse: "「我留下平安給你們；我將我的平安賜給你們……你們心裡不要憂愁，也不要膽怯。」",
+        note: "真正的平安不是沒有風雨，而是在忙碌與變數之中，心裡依然保有一份篤定。",
+        motif: "leaf"
+      },
+      {
+        ref: "加拉太書 6:9",
+        verse: "「我們行善，不可喪志；若不灰心，到了時候就要收成。」",
+        note: "那些默默付出的善意與堅持都沒有白費，時間會把每一份耕耘帶向美好的收成。",
+        motif: "sun"
+      }
+    ];
+
+    const canvas = document.getElementById('scratchCanvas');
+    const ctx = canvas.getContext('2d');
+    const cardMotifEl = document.getElementById('cardMotif');
+    const verseRefEl = document.getElementById('verseRef');
+    const verseTextEl = document.getElementById('verseText');
+    const encouragementEl = document.getElementById('encouragement');
+    const progressTextEl = document.getElementById('progressText');
+    const nextBtn = document.getElementById('nextBtn');
+    const revealBtn = document.getElementById('revealBtn');
+
+    let isDrawing = false;
+    let lastIndex = -1;
+    let isRevealed = false;
+
+    function resizeCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+    }
+
+    function drawCover() {
+      ctx.globalCompositeOperation = 'source-over';
+
+      const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      grad.addColorStop(0, '#d4af37');
+      grad.addColorStop(0.5, '#f3e5ab');
+      grad.addColorStop(1, '#c59b27');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // 細緻點狀紋理
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+      for (let x = 12; x < canvas.width; x += 24) {
+        for (let y = 12; y < canvas.height; y += 24) {
+          ctx.beginPath();
+          ctx.arc(x, y, 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // 塗層中央提示文字
+      ctx.fillStyle = '#5c4308';
+      ctx.font = 'bold 18px "PingFang TC", "Microsoft JhengHei", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('刮開領取今日祝福', canvas.width / 2, canvas.height / 2 - 10);
+
+      ctx.font = '13px "PingFang TC", "Microsoft JhengHei", sans-serif';
+      ctx.fillStyle = '#7a5a10';
+      ctx.fillText('SCRATCH HERE', canvas.width / 2, canvas.height / 2 + 16);
+    }
+
+    function pickCard() {
+      if (cards.length > 1) {
+        let idx;
+        do {
+          idx = Math.floor(Math.random() * cards.length);
+        } while (idx === lastIndex);
+        lastIndex = idx;
+      } else {
+        lastIndex = 0;
+      }
+
+      const card = cards[lastIndex];
+      verseRefEl.textContent = card.ref;
+      verseTextEl.textContent = card.verse;
+      encouragementEl.textContent = card.note;
+      cardMotifEl.innerHTML = motifs[card.motif] || motifs.star;
+    }
+
+    function initCard() {
+      isRevealed = false;
+      pickCard();
+      resizeCanvas();
+      drawCover();
+      progressTextEl.textContent = '已刮開：0%';
+    }
+
+    function getPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      };
+    }
+
+    function scratchAt(x, y) {
+      if (isRevealed) return;
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.beginPath();
+      ctx.arc(x, y, 22, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function checkProgress() {
+      if (isRevealed) return;
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      let transparentPixels = 0;
+      let totalSampled = 0;
+
+      for (let i = 3; i < imageData.length; i += 64) {
+        totalSampled++;
+        if (imageData[i] === 0) {
+          transparentPixels++;
+        }
+      }
+
+      const percent = Math.min(100, Math.round((transparentPixels / totalSampled) * 100));
+      progressTextEl.textContent = `已刮開：${percent}%`;
+
+      if (percent >= 55) {
+        revealAll();
+      }
+    }
+
+    function revealAll() {
+      isRevealed = true;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      progressTextEl.textContent = '已刮開：100% — 願這份祝福陪伴你';
+    }
+
+    // 滑鼠事件
+    canvas.addEventListener('mousedown', e => {
+      isDrawing = true;
+      const pos = getPos(e);
+      scratchAt(pos.x, pos.y);
+      checkProgress();
+    });
+
+    window.addEventListener('mousemove', e => {
+      if (!isDrawing) return;
+      const pos = getPos(e);
+      scratchAt(pos.x, pos.y);
+      checkProgress();
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDrawing = false;
+    });
+
+    // 觸控事件
+    canvas.addEventListener('touchstart', e => {
+      e.preventDefault();
+      isDrawing = true;
+      const pos = getPos(e);
+      scratchAt(pos.x, pos.y);
+      checkProgress();
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', e => {
+      e.preventDefault();
+      if (!isDrawing) return;
+      const pos = getPos(e);
+      scratchAt(pos.x, pos.y);
+      checkProgress();
+    }, { passive: false });
+
+    window.addEventListener('touchend', () => {
+      isDrawing = false;
+    });
+
+    nextBtn.addEventListener('click', initCard);
+    revealBtn.addEventListener('click', revealAll);
+
+    window.addEventListener('resize', () => {
+      if (!isRevealed) {
+        initCard();
+      } else {
+        resizeCanvas();
+      }
+    });
+
+    initCard();
+  </script>
+</body>
+</html>
